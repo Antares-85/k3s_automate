@@ -8,6 +8,7 @@
     k3s_token_file: "K3S_token.yaml"
     remote_output_file_path: "/var/lib/rancher/k3s/server/K3S_token.yaml"
     remote_token_file: "/var/lib/rancher/k3s/server/token"
+    eth_card: "ens18"
 
   tasks:
     - name: Install K3S on master-primary and register join Token
@@ -37,7 +38,7 @@
         kubectl apply -f https://kube-vip.io/manifests/rbac.yaml
         ctr image pull docker.io/plndr/kube-vip:latest
         alias kube-vip='ctr run --rm --net-host docker.io/plndr/kube-vip:latest vip /kube-vip'
-        kube-vip manifest daemonset --arp --interface ens18 --address {{ lookup ('env', 'tls_san') }} --controlplane --leaderElection --taint --inCluster | tee /var/lib/rancher/k3s/server/manifests/kube-vip.yaml
+        kube-vip manifest daemonset --arp --interface {{ eth_card }} --address {{ lookup ('env', 'tls_san') }} --controlplane --leaderElection --taint --inCluster | tee /var/lib/rancher/k3s/server/manifests/kube-vip.yaml
 
 - name: Join master-dependent to the cluster
   hosts: master-dependent
