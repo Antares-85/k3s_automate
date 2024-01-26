@@ -1,0 +1,26 @@
+---
+- name: Prepare nodes for K3s
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Check if swap is present in /etc/fstab
+      command: grep -q '^\S*\s*swap\s*' /etc/fstab
+      register: swap_present
+      ignore_errors: true
+
+    - name: Remove swap from /etc/fstab
+      when: swap_present.rc == 0
+      lineinfile:
+        path: /etc/fstab
+        state: absent
+        regexp: '^.*\sswap\s.*$'
+      notify: Reboot if swap removed
+
+  handlers:
+    - name: Reboot if swap removed
+      command: shutdown -r now
+      async: 0
+      poll: 0
+      listen: "Reboot if swap removed"
+      ignore_errors: true

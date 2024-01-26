@@ -1,0 +1,76 @@
+---
+- name: Install and Configure K3s Cluster
+  hosts: master-primary
+  become: true
+
+  vars:
+    k3s_extra_args_master: "--disable servicelb --node-taint node-role.kubernetes.io/master=true:NoSchedule"
+    k3s_token_file: "K3S_token.yaml"
+    remote_output_file_path: "/var/lib/rancher/k3s/server/K3S_token.yaml"
+    remote_token_file: "/var/lib/rancher/k3s/server/token"
+
+  tasks:
+    - name: Install K3S on master-primary and register join Token
+      shell: |
+        curl -sfL https://get.k3s.io | sh -s - server --cluster-init --tls-san {{ lookup ('env', 'tls_san') }} {{ k3s_extra_args_master }} --write-kubeconfig-mode '644'
+        echo "k3s_join_token: \"$(cat {{ remote_token_file }})\"" > {{ remote_output_file_path }}
+
+    - name: Copy file from remote to local
+      fetch:
+        src: "{{ remote_output_file_path }}"
+        dest: "{{ k3s_token_file }}"
+        flat: yes
+
+    - name: Change permission on local file
+      file:
+        path: "{{ k3s_token_file }}"
+        mode: '0644'
+
+    - name: Cleanup remote file
+      file:
+        path: "{{ remote_output_file_path }}"
+        state: absent
+
+    - name: Install kube-VIP on master-primary
+      become: true
+      shell: |
+        kubectl apply -f https://kube-vip.io/manifests/rbac.yaml
+        ctr image pull docker.io/plndr/kube-vip:latest
+        alias kube-vip='ctr run --rm --net-host docker.io/plndr/kube-vip:latest vip /kube-vip'
+        kube-vip manifest daemonset --arp --interface ens18 --address {{ lookup ('env', 'tls_san') }} --controlplane --leaderElection --taint --inCluster | tee /var/lib/rancher/k3s/server/manifests/kube-vip.yaml
+
+- name: Join master-dependent to the cluster
+  hosts: master-dependent
+  become: true
+
+  vars:
+    k3s_extra_args_master: "--disable servicelb --node-taint node-role.kubernetes.io/master=true:NoSchedule"
+    k3s_token_file: "K3S_token.yaml"
+
+  tasks:
+    - name: Load variables from YAML file
+      include_vars:
+        file: "{{ k3s_token_file }}"
+
+    - name: Install K3s on master-dependent
+      shell: curl -sfL https://get.k3s.io | K3S_TOKEN="{{ k3s_join_token }}" sh -s - server --server https://{{ lookup ('env', 'tls_san') }}:6443 --tls-san {{ lookup ('env', 'tls_san') }} {{ k3s_extra_args_master }}
+
+- name: Install and Join Worker
+  hosts: worker
+  become: true
+
+  vars:
+    k3s_token_file: "K3S_token.yaml"
+
+  tasks:
+    - name: Load variables from YAML file
+      include_vars:
+        file: "{{ k3s_token_file }}"
+
+    - name: Install K3s on worker
+      shell: curl -sfL https://get.k3s.io | K3S_TOKEN="{{ k3s_join_token }}" sh -s - agent --server https://{{ lookup ('env', 'tls_san') }}:6443
+
+    - name: Cleanup K3S var file
+      file:
+        path: "./{{ k3s_token_file }}"
+        state: absent
