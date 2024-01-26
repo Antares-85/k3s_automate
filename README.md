@@ -1,4 +1,4 @@
-# Automated K3s Cluster Deployment with Ansible
+# Automated K3s HA Cluster Deployment with Ansible
 ## Overview
 This project aims to provide a fully automated solution for deploying a K3s cluster using Ansible playbooks. The deployment process involves two main playbooks: prepare-node.yaml and deploy-cluster.yaml.
 
