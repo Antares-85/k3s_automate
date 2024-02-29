@@ -33,7 +33,7 @@ ansible-playbook -i inventory.ini prepare-node.yaml
 Deploy the K3s cluster using this playbook.
 
 ```
-ansible-playbook -i inventory.ini deploy-cluster.yaml
+ansible-playbook -i inventory.ini deploy_k3s_ha.yaml
 ```
 ## Configuration
 ### inventory.ini
