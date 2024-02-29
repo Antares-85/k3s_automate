@@ -22,16 +22,6 @@
         dest: "{{ k3s_token_file }}"
         flat: yes
 
-    - name: Change permission on local file
-      file:
-        path: "{{ k3s_token_file }}"
-        mode: '0644'
-
-    - name: Cleanup remote file
-      file:
-        path: "{{ remote_output_file_path }}"
-        state: absent
-
     - name: Install kube-VIP on master-primary
       become: true
       shell: |
@@ -39,6 +29,7 @@
         ctr image pull docker.io/plndr/kube-vip:latest
         alias kube-vip='ctr run --rm --net-host docker.io/plndr/kube-vip:latest vip /kube-vip'
         kube-vip manifest daemonset --arp --interface {{ eth_card }} --address {{ lookup ('env', 'tls_san') }} --controlplane --leaderElection --taint --inCluster | tee /var/lib/rancher/k3s/server/manifests/kube-vip.yaml
+        sleep 30
 
 - name: Join master-dependent to the cluster
   hosts: master-dependent
