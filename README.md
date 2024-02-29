@@ -16,7 +16,7 @@ Nodes meet the minimum requirements for running K3s.
 ### 1. Clone the Repository
 ```
 git clone https://github.com/Antares-85/k3s_automate.git
-cd your-k3s-automation-repo
+cd k3s_automate
 ```
 ### 2. Edit Configuration
 I exported a variable in the Ansible server for the IP of kube-VIP master loadbalance
